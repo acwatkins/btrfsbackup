@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+
+import argparse
+import datetime
+import os
+import subprocess
+
+def cleanupOldBackups(path, prefix, keepCount):
+	currentCount = 0
+	for backup in os.listdir(path):
+		if (backup.startswith(prefix + "-")):
+			currentCount += 1
+			if (currentCount > keepCount):
+				subprocess.call("btrfs subvolume delete " + backup)
+
+# btrfsbackup source dest --prefix hourly --keep 4
+
+parser = argparse.ArgumentParser(description='Snapshot and backup to another computer')
+parser.add_argument('source', action='store', help='The path to backup')
+parser.add_argument('destination', action='store', help='Path to store snapshots')
+parser.add_argument('--prefix', '-p', action='store', help='Value to be prepended to the date prefix-(YYYY-MM-DD_HH:MM:SS)')
+parser.add_argument('--keep', '-k', action='store', help='Number of snapshots to keep with this prefix')
+
+args = parser.parse_args()
+
+snapshotName = args.prefix + '-%Y-%m-%d_%H:%M:%S'
+snapshotName = datetime.datetime.now().strftime(snapshotName)
+command = "btrfs subvolume snapshot " + args.source + " " + args.destination + "/" + snapshotName
+print(command)
+subprocess.call("btrfs subvolume snapshot " + args.source + " " + args.destination + "/" + snapshotName, shell=True)
+cleanupOldBackups(args.destination, args.prefix, int(args.keep))
