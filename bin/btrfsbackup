@@ -48,7 +48,7 @@ def sendBackup(source, destination, sshPath, remoteDestination):
 		if (success):
 			runCommand("btrfs subvolume delete " + backupSnapshot)
 			shutil.move(newBackupSnapshot, backupSnapshot)
-			runCommand("ssh " + sshPath + " 'btrfs subvolume delete " + remoteSnapshot)
+			runCommand("ssh " + sshPath + " 'btrfs subvolume delete " + remoteSnapshot + "'")
 			runCommand("ssh " + sshPath + " 'mv " + newRemoteSnapshot + " " + remoteSnapshot + "'")
 	else:
 		runCommand("btrfs subvolume snapshot -r " + source + " " + backupSnapshot)
