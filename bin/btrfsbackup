@@ -7,6 +7,8 @@ import os
 import shutil
 import subprocess
 
+from lockfile import LockFile
+
 logging.basicConfig(level=logging.DEBUG)
 
 def runCommand(command):
@@ -35,6 +37,13 @@ def cleanupOldBackups(path, postfix, keepCount):
 				runCommand("btrfs subvolume delete " + backup)
 
 def sendBackup(source, destination, sshPath, remoteDestination):
+	lock = LockFile("/var/lock/btrfsbackup.lock")
+	while not lock.i_am_locking():
+		try:
+			lock.acquire(timeout=600)    # wait up to 60 seconds
+		except LockTimeout:
+			logging.warning("Unable to acquire lock")
+
 	newBackupSnapshot = destination + "/backup-new"
 	backupSnapshot = destination + "/backup"
 	newRemoteSnapshot = remoteDestination + "/backup-new"
@@ -54,6 +63,8 @@ def sendBackup(source, destination, sshPath, remoteDestination):
 		runCommand("btrfs subvolume snapshot -r " + source + " " + backupSnapshot)
 		runCommand("sync")
 		runCommand("btrfs send " + backupSnapshot + " | ssh " + sshPath + " 'btrfs receive " + remoteDestination + "'")
+		
+	lock.release()
 
 # btrfsbackup source dest --prefix hourly --keep 4
 
