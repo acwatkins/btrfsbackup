@@ -11,7 +11,15 @@ logging.basicConfig(level=logging.DEBUG)
 
 def runCommand(command):
 	logging.info("Running command: " + command)
-	subprocess.call(command, shell=True)
+	try:
+		subprocess.check_call(command, shell=True)
+	except subprocess.CalledProcessError:
+		logging.error("Error running command")
+		return False
+	except OSError:
+		logging.error("Executable not found")
+		return False
+	return True
 
 def createSnapshot(source, destination, postfix, keepCount):
 	snapshotName = '%Y-%m-%d_%H:%M:%S_' + postfix
@@ -27,18 +35,19 @@ def cleanupOldBackups(path, postfix, keepCount):
 				runCommand("btrfs subvolume delete " + backup)
 
 def sendBackup(source, destination, sshPath, remoteDestination):
-	sendingSnapshot = destination + "/sending"
-	sentSnapshot = destination + "/sent"
-	if (os.path.isdir(sendingSnapshot)):
-		runCommand("btrfs subvolume delete " + sendingSnapshot)
-	runCommand("btrfs subvolume snapshot -r " + source + " " + sendingSnapshot)
-	if (os.path.isdir(sentSnapshot)):
-		runCommand("btrfs subvolume send -p " + sentSnapshot + " " + sendingSnapshot + " | ssh " + sshPath + " 'btrfs subvolume receive " + remoteDestination + "'")
-		runCommand("btrfs subvolume delete " + sentSnapshot)
+	newBackupSnapshot = destination + "/backup-new"
+	backupSnapshot = destination + "/backup"
+	if (os.path.isdir(newBackupSnapshot)):
+		runCommand("btrfs subvolume delete " + newBackupSnapshot)
+	if (os.path.isdir(backupSnapshot)):
+		runCommand("btrfs subvolume snapshot -r " + source + " " + newBackupSnapshot)
+		runCommand("sync")
+		runCommand("btrfs send -p " + backupSnapshot + " " + newBackupSnapshot + " | ssh " + sshPath + " 'btrfs receive " + remoteDestination + "'")
+		runCommand("btrfs subvolume delete " + newBackupSnapshot)
 	else:
-		runCommand("btrfs subvolume send " + sendingSnapshot + " | ssh " + sshPath + " 'btrfs subvolume receive " + remoteDestination + "'")
-
-	shutil.move(sendingSnapshot, sentSnapshot)
+		runCommand("btrfs subvolume snapshot -r " + source + " " + backupSnapshot)
+		runCommand("sync")
+		runCommand("btrfs send " + backupSnapshot + " | ssh " + sshPath + " 'btrfs receive " + remoteDestination + "'")
 
 # btrfsbackup source dest --prefix hourly --keep 4
 
