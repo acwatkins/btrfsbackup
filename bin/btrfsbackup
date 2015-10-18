@@ -13,15 +13,15 @@ def runCommand(command):
 	logging.info("Running command: " + command)
 	subprocess.call(command, shell=True)
 
-def createSnapshot(source, destination, prefix, keepCount):
-	snapshotName = prefix + '_%Y-%m-%d_%H:%M:%S'
+def createSnapshot(source, destination, postfix, keepCount):
+	snapshotName = '%Y-%m-%d_%H:%M:%S_' + postfix
 	snapshotName = datetime.datetime.now().strftime(snapshotName)
 	runCommand("btrfs subvolume snapshot " + source + " " + destination + "/" + snapshotName)
 	
-def cleanupOldBackups(path, prefix, keepCount):
+def cleanupOldBackups(path, postfix, keepCount):
 	currentCount = 0
 	for backup in os.listdir(path):
-		if (backup.startswith(prefix + "-")):
+		if (backup.endswith(postfix)):
 			currentCount += 1
 			if (currentCount > keepCount):
 				runCommand("btrfs subvolume delete " + backup)
@@ -45,7 +45,7 @@ def sendBackup(source, destination, sshPath, remoteDestination):
 parser = argparse.ArgumentParser(description='Snapshot and backup to another computer')
 parser.add_argument('source', action='store', help='The path to backup')
 parser.add_argument('destination', action='store', help='Path to store snapshots')
-parser.add_argument('--prefix', '-p', action='store', help='Value to be prepended to the date prefix-(YYYY-MM-DD_HH:MM:SS)')
+parser.add_argument('--postfix', '-p', action='store', help='Value to be appended to the date YYYY-MM-DD_HH:MM:SS_postfix')
 parser.add_argument('--keep', '-k', action='store', help='Number of snapshots to keep with this prefix')
 parser.add_argument('--sshServer', '-s', action='store', default=None, help='User and destination IP, e.g. user@10.0.0.5')
 parser.add_argument('--remoteDestination', '-r', action='store', default=None, help='Location to send the backup to')
@@ -55,5 +55,5 @@ args = parser.parse_args()
 if (args.remoteDestination != None and args.sshServer != None):
 	sendBackup(args.source, args.destination, args.sshServer, args.remoteDestination)
 else:
-	createSnapshot(args.source, args.destination, args.prefix, args.keep)
-	cleanupOldBackups(args.destination, args.prefix, int(args.keep))
+	createSnapshot(args.source, args.destination, args.postfix, args.keep)
+	cleanupOldBackups(args.destination, args.postfix, int(args.keep))
