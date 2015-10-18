@@ -37,13 +37,19 @@ def cleanupOldBackups(path, postfix, keepCount):
 def sendBackup(source, destination, sshPath, remoteDestination):
 	newBackupSnapshot = destination + "/backup-new"
 	backupSnapshot = destination + "/backup"
+	newRemoteSnapshot = remoteDestination + "/backup-new"
+	remoteSnapshot = remoteDestination + "/backup"
 	if (os.path.isdir(newBackupSnapshot)):
 		runCommand("btrfs subvolume delete " + newBackupSnapshot)
 	if (os.path.isdir(backupSnapshot)):
 		runCommand("btrfs subvolume snapshot -r " + source + " " + newBackupSnapshot)
 		runCommand("sync")
-		runCommand("btrfs send -p " + backupSnapshot + " " + newBackupSnapshot + " | ssh " + sshPath + " 'btrfs receive " + remoteDestination + "'")
-		runCommand("btrfs subvolume delete " + newBackupSnapshot)
+		success = runCommand("btrfs send -p " + backupSnapshot + " " + newBackupSnapshot + " | ssh " + sshPath + " 'btrfs receive " + remoteDestination + "'")
+		if (success):
+			runCommand("btrfs subvolume delete " + backupSnapshot)
+			shutil.move(newBackupSnapshot, backupSnapshot)
+			runCommand("ssh " + sshPath + " 'btrfs subvolume delete " + remoteSnapshot)
+			runCommand("ssh " + sshPath + " 'mv " + newRemoteSnapshot + " " + remoteSnapshot + "'")
 	else:
 		runCommand("btrfs subvolume snapshot -r " + source + " " + backupSnapshot)
 		runCommand("sync")
