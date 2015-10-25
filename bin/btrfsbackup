@@ -30,7 +30,7 @@ def createSnapshot(source, destination, postfix, keepCount):
 	
 def cleanupOldBackups(path, postfix, keepCount):
 	currentCount = 0
-	for backup in os.listdir(path):
+	for backup in reversed(os.listdir(path)):
 		if (backup.endswith(postfix)):
 			currentCount += 1
 			if (currentCount > keepCount):
@@ -63,7 +63,7 @@ def sendBackup(source, destination, sshPath, remoteDestination):
 		runCommand("btrfs subvolume snapshot -r " + source + " " + backupSnapshot)
 		runCommand("sync")
 		runCommand("btrfs send " + backupSnapshot + " | ssh " + sshPath + " 'btrfs receive " + remoteDestination + "'")
-		
+
 	lock.release()
 
 # btrfsbackup source dest --prefix hourly --keep 4
