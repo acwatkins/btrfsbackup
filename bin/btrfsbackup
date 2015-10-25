@@ -31,10 +31,11 @@ def createSnapshot(source, destination, postfix, keepCount):
 def cleanupOldBackups(path, postfix, keepCount):
 	currentCount = 0
 	for backup in reversed(os.listdir(path)):
-		if (backup.endswith(postfix)):
+		backupFullPath = path + "/" + backup
+		if (backupFullPath.endswith(postfix)):
 			currentCount += 1
 			if (currentCount > keepCount):
-				runCommand("btrfs subvolume delete " + backup)
+				runCommand("btrfs subvolume delete " + backupFullPath)
 
 def sendBackup(source, destination, sshPath, remoteDestination):
 	lock = LockFile("/var/lock/btrfsbackup.lock")
